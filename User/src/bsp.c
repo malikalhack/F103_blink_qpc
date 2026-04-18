@@ -231,12 +231,19 @@ static void systick_config (uint32_t ticks) {
  * @brief Interrupt request handler for SysTick timer.
  */
 void SysTick_Handler(void) {
+#ifdef QXK_PRJ
     QXK_ISR_ENTRY();   /* inform QXK about entering an ISR */
+#endif /* QXK_PRJ */
+
 #ifdef Q_SPY
     QS_tickTime_ += QS_tickPeriod_; /* account for the clock rollover */
-#endif
+#endif /* Q_SPY */
+
     QF_TICK_X(0U, (void *)0);  /* perform clock processing QF */
+
+#ifdef QXK_PRJ
     QXK_ISR_EXIT();  /* inform QXK about exiting an ISR */
+#endif /* QXK_PRJ */
 }
 /******************************************************************************/
 
