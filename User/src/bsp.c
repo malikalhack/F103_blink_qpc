@@ -261,6 +261,21 @@ void __NO_RETURN HardFault_Handler (void) {
  * @brief Actions performed by the QV kernel when it is idle.
  */
 void QV_onIdle(void) {
+    /* Process all active objects sequentially */
+    QF_INT_DISABLE();
+    for (uint_fast8_t p = 1U; p <= QF_MAX_ACTIVE; ++p) {
+        QActive *a = QF_active_[p];
+        if (a != (QActive *)0) {
+            while (a->eQueue.frontEvt != (QEvt *)0) {
+                QEvt const *e = QActive_get_(a);
+                QF_INT_ENABLE();
+                QHSM_DISPATCH(&a->super, e, a->prio);
+                QF_gc(e);
+                QF_INT_DISABLE();
+            }
+        }
+    }
+    QF_INT_ENABLE();
 #elif defined(QK_PRJ)
 /**
  * @brief Actions performed by the QK kernel when it is idle.
