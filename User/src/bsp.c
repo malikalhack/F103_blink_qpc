@@ -321,7 +321,11 @@ void QF_onStartup(void) {
 
 void Q_onAssert(char const * const module, int loc) {
     QS_ASSERTION(module, loc, 10000U); /* report assertion to QS */
-    __NVIC_SystemReset();
+#ifndef NDEBUG
+    while(1); /* for debugging, hang on in an endless loop... */
+#else
+    NVIC_SystemReset();
+#endif
 }
 /******************************************************************************/
 #ifdef Q_SPY
