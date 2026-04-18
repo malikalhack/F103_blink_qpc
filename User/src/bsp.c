@@ -267,7 +267,7 @@ void QV_onIdle(void) {
         QActive *a = QF_active_[p];
         if (a != (QActive *)0) {
             while (a->eQueue.frontEvt != (QEvt *)0) {
-                QEvt const *e = QActive_get_(a);
+                QEvt const *e = QEQueue_get(&a->eQueue, a->prio);
                 QF_INT_ENABLE();
                 QHSM_DISPATCH(&a->super, e, a->prio);
                 QF_gc(e);
