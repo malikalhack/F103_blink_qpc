@@ -231,12 +231,19 @@ static void systick_config (uint32_t ticks) {
  * @brief Interrupt request handler for SysTick timer.
  */
 void SysTick_Handler(void) {
+#ifdef QXK_PRJ
     QXK_ISR_ENTRY();   /* inform QXK about entering an ISR */
+#endif /* QXK_PRJ */
+
 #ifdef Q_SPY
     QS_tickTime_ += QS_tickPeriod_; /* account for the clock rollover */
-#endif
+#endif /* Q_SPY */
+
     QF_TICK_X(0U, (void *)0);  /* perform clock processing QF */
+
+#ifdef QXK_PRJ
     QXK_ISR_EXIT();  /* inform QXK about exiting an ISR */
+#endif /* QXK_PRJ */
 }
 /******************************************************************************/
 
@@ -249,11 +256,45 @@ void __NO_RETURN HardFault_Handler (void) {
     while(1);
 }
 /******************************************************************************/
-#ifdef QXK_PRJ
+#if defined(QV_PRJ)
+/**
+ * @brief Actions performed by the QV kernel when it is idle.
+ */
+void QV_onIdle(void) {
+    /* Process all active objects sequentially */
+    QF_INT_DISABLE();
+    for (uint_fast8_t p = 1U; p <= QF_MAX_ACTIVE; ++p) {
+        QActive *a = QF_active_[p];
+        if (a != (QActive *)0) {
+            while (a->eQueue.frontEvt != (QEvt *)0) {
+                QEvt const *e = QEQueue_get(&a->eQueue, a->prio);
+                QF_INT_ENABLE();
+                QHSM_DISPATCH(&a->super, e, a->prio);
+                QF_gc(e);
+                QF_INT_DISABLE();
+            }
+        }
+    }
+    QF_INT_ENABLE();
+#elif defined(QK_PRJ)
+/**
+ * @brief Actions performed by the QK kernel when it is idle.
+ */
+void QK_onIdle(void) {
+    /* Schedule and activate ready active objects */
+    QF_INT_DISABLE();
+    if (QK_sched_() != 0U) {  /* any AO ready to run? */
+        QF_INT_ENABLE();
+        QK_activate_();       /* activate the AO */
+        QF_INT_DISABLE();
+    }
+    QF_INT_ENABLE();
+#elif defined(QXK_PRJ)
 /**
  * @brief Actions performed by the QXK kernel when it is idle.
  */
 void QXK_onIdle(void) {
+#endif
 #ifdef Q_SPY
     QS_rxParse(); /* parse all the received bytes */
     if ((USART3->SR & BIT(7)) != 0) { // TXE empty?
@@ -269,7 +310,6 @@ void QXK_onIdle(void) {
     }
 #endif
 }
-#endif
 /******************************************************************************/
 
 Q_NORETURN Q_onError(char const * const module, int_t const id) {
@@ -296,7 +336,11 @@ void QF_onStartup(void) {
 
 void Q_onAssert(char const * const module, int loc) {
     QS_ASSERTION(module, loc, 10000U); /* report assertion to QS */
-    __NVIC_SystemReset();
+#ifndef NDEBUG
+    while(1); /* for debugging, hang on in an endless loop... */
+#else
+    NVIC_SystemReset();
+#endif
 }
 /******************************************************************************/
 #ifdef Q_SPY
