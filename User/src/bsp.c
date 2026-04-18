@@ -266,6 +266,14 @@ void QV_onIdle(void) {
  * @brief Actions performed by the QK kernel when it is idle.
  */
 void QK_onIdle(void) {
+    /* Schedule and activate ready active objects */
+    QF_INT_DISABLE();
+    if (QK_sched_() != 0U) {  /* any AO ready to run? */
+        QF_INT_ENABLE();
+        QK_activate_();       /* activate the AO */
+        QF_INT_DISABLE();
+    }
+    QF_INT_ENABLE();
 #elif defined(QXK_PRJ)
 /**
  * @brief Actions performed by the QXK kernel when it is idle.
